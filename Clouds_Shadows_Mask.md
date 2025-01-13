@@ -1,84 +1,60 @@
-# Gerando a Máscara de Nuvens e Sombras para Imagens de Eventos de Inundação
+Cloud cover is one of the primary challenges in acquiring remote sensing imagery. Several methods have been developed to create cloud and shadow masks. The method proposed in this study aims to generate cloud and shadow masks specifically tailored for flood events, focusing on a straightforward processing approach that balances cloud and shadow detection while minimizing false positives, particularly those caused by surface water.
 
-A cobertura de nuvens é uma das principais dificuldades na obtenção de imagens de sensoriamento remoto. Existem diversos métodos para criar máscaras de nuvens e sombras. O método proposto neste trabalho tem como objetivo criar uma máscara de nuvens e sombras especificamente para eventos de inundação, visando um processamento simples que equilibre a detecção de nuvens e sombras com a presença de falsos positivos, especialmente aqueles originados de água superficial.
+Define, in a preliminary study, the selected attributes for creating your cloud and shadow mask. It is recommended to individually threshold the attributes to analyze their separability and respective potential. Additionally, the use of the Boruta algorithm is suggested to evaluate the importance of each attribute in a more robust manner.
 
-Defina, em um estudo prévio, os atributos selecionados para a criação da sua máscara de nuvens e sombras. Sugere-se realizar limiarizações individuais dos atributos para analisar a capacidade de separabilidade de cada um e seus respectivos potenciais.
+Below is an example of how the Boruta package can be used in R to assess attribute importance:
 
-No estudo em questão, os atributos foram selecionados em um processo simples de limiarização utilizando Sistemas de Informação Geográfica (SIGs). Neste caso, foram usadas bandas do MSI/Sentinel-2, e os atributos devem ser adaptados de acordo com as bandas disponíveis no satélite utilizado.
+```R
+# Install and load the Boruta package
+if (!require("Boruta")) install.packages("Boruta")
+library(Boruta)
 
-# Atributos para imagens MSI/Sentinel-2
+# Example dataset: Assume `data` is your dataframe with attributes and `target` is your images
+# Replace 'attribute1', 'attribute2', ..., 'attributeN' with your actual spectral attributes
+set.seed(1)  
+boruta_result <- Boruta(target ~ ., data = data, doTrace = 2)
 
-O stack gerado no código  utiliza 7 atributos que foram pré-selecionados, sendo eles:
+# Print the importance of attributes
+print(boruta_result)
 
-* WV-CDI (Water Vapour Cloud Detection Index) - Consultar Maia (2025)
-* WI (Whiteness Index) -  Consultar Gómez-Chova et al. (2007) 
-* HOT (Haze Optimized Transformation) - Consultar Zhang et al. (2002)
-* SWIR-SCD (Short-Wave Infrared Shadow and Clouds Detection Index) - Consultar Maia (2025)
-* NIR-SCD (Near Infrared Shadow and Clouds Detection Index) - Consultar Maia (2025)
-* Cloud Index - Consultar Zhai et al. (2018)
-* Cirrus - Banda 10 do MSI/Sentinel-2
+# Plot the results for better visualization
+plot(boruta_result, main = "Boruta Attribute Importance")
+final_boruta <- TentativeRoughFix(boruta_result)
+important_attributes <- getSelectedAttributes(final_boruta, withTentative = FALSE)
 
-Os atributos foram gerados em um SIG. É importante mencionar que as bandas de 60 m devem ser reamostradas. Um exemplo de um processo simples de reamostragem pode ser feito pela linha abaixo:
+# Print the selected attributes
+cat("Important attributes identified by Boruta:\n", important_attributes, "\n")
+```
+
+The attributes were generated in a GIS environment. It is important to mention that bands with differing nominal spatial resolutions must be resampled to ensure consistency in analysis. A simple example of a resampling process can be performed using the following code in R
 
 ```r
-target_resolution <- 10  # Resolução a ser definida
-B9 <- resample(B9, B1, method="bilinear")
+target_resolution <- 60  # Resolution
+B9 <- resample(B4, B1, method="bilinear")
 
 ```
 
-Como alternativa à geração dos atributos por um SIG, o código abaixo calcula cada um dos atributos (partindo do pressuposto de que as bandas estão reamostradas). 
-
-```r
-# Carregando as bandas do MSI/Sentinel-2 que serão utilizadas 
-
-B2 <- rast("caminho-B2.tif")
-B3 <- rast("caminho-B3.tif")
-B4 <- rast("caminho-B4.tif")
-B8 <- rast("caminho-B8.tif")
-B8A <- rast("caminho-B8A.tif")
-B9 <- rast("caminho-B9.tif")
-B11 <- rast("caminho-B11.tif")
-
-# Calculando os atributos espectrais
-HOT <- B2 - (0.45 * B4) - 0.08
-M <- (0.25 * B2) + (0.375 * B3) + (0.375 * B4)
-WI <- ( (B2 - M) / M ) + ( (B3 - M) / M ) + ( (B4 - M) / M )
-Cloud Index <- (B8 + (2 * B11) / (B2 + B3 + B4)
-WV <- B2 - (0.45 * B4) - (0.32 * B9)
-SWIR_SCD <- B2 - (0.45 * B4) - (0.32 * B11)
-NIR-SCD <- B2− (0,45 * B4) − (0,16* B8)
-
-# Salvar os resultados em arquivos raster
-writeRaster(HOT, "caminho", overwrite=TRUE)
-writeRaster(WI, "caminho", overwrite=TRUE)
-writeRaster(Cloud_Index, "caminho", overwrite=TRUE)
-writeRaster(WV, "caminho", overwrite=TRUE)
-writeRaster(SWIR_SCD, "caminho", overwrite=TRUE)
-
-```
-
-# Atributos para imagens de sensores RGB-NIR (CBERS-4, CBERS-4A, Amazonia-1, RapidEye etc)
+As an alternative to the generation of the attribute by a GIS software, the script below calculates each of the attributes.
 
 ```r
 
-# Carregando as bandas que serão utilizadas, no exemplo, as bandas do MUX/CBERS-4A
+# Loading the bands that will be used, in the example, the MUX/CBERS-4A bands.
 
-B05 <- rast("caminho-B5.tif")
-B06 <- rast("caminho-B6.tif")
-B07 <- rast("caminho-B7.tif")
-B08 <- rast("caminho-B8.tif")
+B05 <- rast("path-B5.tif")
+B06 <- rast("path-B6.tif")
+B07 <- rast("path-B7.tif")
+B08 <- rast("path-B8.tif")
 
-# Calculando os atributos espectrais
+# Calculating the spectral attributes. 
 
 HOT <- B05 - (0.45 * B07) - 0.08
 M <- (0.25 * B05) + (0.375 * B06) + (0.375 * B07)
 WI <- ( (B05 - M) / M ) + ( (B06 - M) / M ) + ( (B07 - M) / M )
-Cloud Index Alternativo <- (3 * B08) / (B05 + B06 + B07)
+Cloud Index  <- (3 * B08) / (B05 + B06 + B07)
 NIR-SCD <- B05− (0,45 * B07) − (0,16 * B08)
 NDWI <- B07 - B08 / B07 + B08
 
-# Salvar os resultados em arquivos raster
-
+# Saving the results 
 writeRaster(HOT, "HOT.tif", overwrite=TRUE)
 writeRaster(M, "M.tif", overwrite=TRUE)
 writeRaster(WI, "WI.tif", overwrite=TRUE)
@@ -90,7 +66,7 @@ writeRaster(NDWI, "NDWI.tif", overwrite=TRUE)
 
 
 
-# REFERÊNCIAS 
+# Important Bibliography
 GÓMEZ-CHOVA, L. et al. Cloud-screening algorithm for envisat/meris multispectral images. IEEE Transactions on Geoscience and Remote Sensing, v. 45, n. 12, p. 4105–4118, 2007. 8
 
 ZHAI, H.; ZHANG, H.; ZHANG, L.; LI, P. Cloud/shadow detection based on spectral indices for multi/hyperspectral optical remote sensing imagery. ISPRS Journal of Photogrammetry and Remote Sensing, v. 144, p. 235–253, 2018.
