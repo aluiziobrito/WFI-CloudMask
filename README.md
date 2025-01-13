@@ -34,3 +34,23 @@ This is a project by a beginner enthusiast 🚶‍♂️ learning remote sensing
 If you use this model or methodology in your research, please cite this work.
 
 MAIA, Aluizio Brito et al.. A CLOUD DETECTION MODEL FOR MULTISPECTRAL SENSORS: APPLICATIONS TO WFI CAMERA ON AMAZONIA-1, CBERS-4 AND CBERS-4A SATELLITES... In: Anais do Simpósio Internacional Selper: Além do dossel – Tecnologias e Aplicações de Sensoriamento Remoto. Anais...Belém(PA) UFPA, 2024. Disponível em: https//www.even3.com.br/anais/xxi-selper-2024/869872-A-CLOUD-DETECTION-MODEL-FOR-MULTISPECTRAL-SENSORS--APPLICATIONS-TO-WFI-CAMERA-ON-AMAZONIA-1-CBERS-4-AND-CBERS-4A. 
+
+## Installation 
+To install all of the required packages, run in your R environment:
+
+```R
+# List of required packages
+neededPackages = c("viridis", "terra", "raster", "stats", "sf", "ggplot2", "sp", "dplyr", "tidyr", "ROCR",
+                   "reshape2", "randomForest", "caret", "caTools", "geobr", "prettymapr", 
+                   "tidyselect", "rpart", "rpart.plot", "partykit")
+
+# Function to check if the package is installed. If not, it will be installed and loaded.
+pkgTest = function(x) {
+  if (!x %in% rownames(installed.packages())) { 
+    install.packages(x, dependencies = TRUE) 
+  }
+  library(x, character.only = TRUE)
+}
+for (package in neededPackages) {
+  pkgTest(package)
+}
